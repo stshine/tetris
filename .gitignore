@@ -1,0 +1,15 @@
+/target
+
+# Editors
+*.swp
+
+# IntelliJ
+.idea
+*.iws
+
+# VSCode
+.vscode
+*.code-workspace
+
+# Emacs
+*~
