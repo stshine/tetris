@@ -2,6 +2,7 @@ extern crate gl;
 extern crate glutin;
 extern crate image;
 
+mod gfx;
 use glutin::{event_loop, event::Event, event::WindowEvent};
 
 fn main() {
