@@ -11,8 +11,8 @@ use tetris::Tetris;
 const PX_PER_PIECE: f32 = 20.0;
 
 fn main() {
-    let width = PX_PER_PIECE * tetris::ROW as f32;
-    let height = PX_PER_PIECE * tetris::COLUMN as f32;
+    let width = PX_PER_PIECE * tetris::ROWS as f32;
+    let height = PX_PER_PIECE * tetris::COLUMNS as f32;
 
     let event_loop = event_loop::EventLoop::new();
     let window = glutin::window::WindowBuilder::new()
@@ -55,10 +55,10 @@ fn main() {
                                 row = row.checked_sub(1).unwrap_or(0);
                             }
                             glutin::event::VirtualKeyCode::Right => {
-                                row =  (row + 1).min(tetris::ROW - 1);
+                                row =  (row + 1).min(tetris::ROWS - 1);
                             }
                             glutin::event::VirtualKeyCode::Up => {
-                                column = (column + 1).min(tetris::COLUMN - 1);
+                                column = (column + 1).min(tetris::COLUMNS - 1);
                             }
                             glutin::event::VirtualKeyCode::Down => {
                                 column = column.checked_sub(1).unwrap_or(0);

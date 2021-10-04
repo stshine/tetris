@@ -2,8 +2,8 @@ use gl::types::{GLchar, GLint, GLsizeiptr, GLuint, GLvoid};
 
 use crate::gfx::{GLBuffer, GLProgram, create_buffer, create_program};
 
-pub const ROW: usize = 10;
-pub const COLUMN: usize = 20;
+pub const ROWS: usize = 10;
+pub const COLUMNS: usize = 20;
 
 const VERTICES: [[i32; 2]; 4] = [
     [0, 0], [1, 0], [0, 1], [1, 1], 
