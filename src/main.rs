@@ -5,7 +5,7 @@ extern crate image;
 mod gfx;
 mod tetris;
 
-use glutin::{event_loop, event::Event, event::WindowEvent};
+use glutin::{event::Event, event::WindowEvent, event_loop};
 use tetris::Tetris;
 
 const PX_PER_PIECE: f32 = 20.0;
@@ -13,7 +13,7 @@ const PX_PER_PIECE: f32 = 20.0;
 fn main() {
     let width = PX_PER_PIECE * tetris::ROW as f32;
     let height = PX_PER_PIECE * tetris::COLUMN as f32;
-    
+
     let event_loop = event_loop::EventLoop::new();
     let window = glutin::window::WindowBuilder::new()
         .with_title("Tetris")
@@ -32,9 +32,9 @@ fn main() {
     ::gl::load_with(|s| context.get_proc_address(s) as *const std::ffi::c_void);
 
     let game = Tetris::init();
-    
-    let mut row = 0;
-    let mut column = 0;
+
+    let mut row: usize = 0;
+    let mut column: usize = 0;
 
     event_loop.run(move |event, _, control_flow| {
         *control_flow = event_loop::ControlFlow::Wait;
@@ -48,13 +48,21 @@ fn main() {
                 WindowEvent::Resized(_) => {
                     // context.resize(*size);
                 }
-                WindowEvent::KeyboardInput{input, ..} => {
+                WindowEvent::KeyboardInput { input, .. } => {
                     if let Some(key_code) = input.virtual_keycode {
                         match key_code {
-                            glutin::event::VirtualKeyCode::Left => { row = row - 1; }
-                            glutin::event::VirtualKeyCode::Right => { row = row + 1; }
-                            glutin::event::VirtualKeyCode::Up => { column = column + 1; }
-                            glutin::event::VirtualKeyCode::Down => { column = column - 1; }
+                            glutin::event::VirtualKeyCode::Left => {
+                                row = row.checked_sub(1).unwrap_or(0);
+                            }
+                            glutin::event::VirtualKeyCode::Right => {
+                                row =  (row + 1).min(tetris::ROW - 1);
+                            }
+                            glutin::event::VirtualKeyCode::Up => {
+                                column = (column + 1).min(tetris::COLUMN - 1);
+                            }
+                            glutin::event::VirtualKeyCode::Down => {
+                                column = column.checked_sub(1).unwrap_or(0);
+                            }
                             _ => {}
                         }
                     }
@@ -72,8 +80,6 @@ fn main() {
                     //     }
                     //     _ => {}
                     // }
-                    row = row.clamp(0, tetris::ROW);
-                    column = column.clamp(0, tetris::COLUMN);
                     game.draw_piece(row, column);
                     context.swap_buffers().unwrap();
                 }
