@@ -32,6 +32,9 @@ fn main() {
     ::gl::load_with(|s| context.get_proc_address(s) as *const std::ffi::c_void);
 
     let game = Tetris::init();
+    
+    let mut row = 0;
+    let mut column = 0;
 
     event_loop.run(move |event, _, control_flow| {
         *control_flow = event_loop::ControlFlow::Wait;
@@ -46,12 +49,38 @@ fn main() {
                     // context.resize(*size);
                 }
                 WindowEvent::KeyboardInput{input, ..} => {
-                    println!("{}", input.scancode);
+                    if let Some(key_code) = input.virtual_keycode {
+                        match key_code {
+                            glutin::event::VirtualKeyCode::Left => { row = row - 1; }
+                            glutin::event::VirtualKeyCode::Right => { row = row + 1; }
+                            glutin::event::VirtualKeyCode::Up => { column = column + 1; }
+                            glutin::event::VirtualKeyCode::Down => { column = column - 1; }
+                            _ => {}
+                        }
+                    }
+                    // match input.scancode {
+                    //     0x4b => {
+                    //     }
+                    //     0x4d => {
+                    //         row = row + 1;
+                    //     }
+                    //     0x50 => {
+                    //         column = column - 1;
+                    //     }
+                    //     0x48 => {
+                    //         column = column + 1;
+                    //     }
+                    //     _ => {}
+                    // }
+                    row = row.clamp(0, tetris::ROW);
+                    column = column.clamp(0, tetris::COLUMN);
+                    game.draw_piece(row, column);
+                    context.swap_buffers().unwrap();
                 }
                 _ => (),
             },
             Event::RedrawRequested(_) => {
-                game.draw_piece(5, 10);
+                game.draw_piece(row, column);
                 context.swap_buffers().unwrap();
             }
             _ => (),
