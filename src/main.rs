@@ -6,12 +6,18 @@ mod gfx;
 mod tetris;
 
 use glutin::{event_loop, event::Event, event::WindowEvent};
+use tetris::Tetris;
+
+const PX_PER_PIECE: f32 = 20.0;
 
 fn main() {
+    let width = PX_PER_PIECE * tetris::ROW as f32;
+    let height = PX_PER_PIECE * tetris::COLUMN as f32;
+    
     let event_loop = event_loop::EventLoop::new();
     let window = glutin::window::WindowBuilder::new()
         .with_title("Tetris")
-        .with_inner_size(glutin::dpi::LogicalSize::new(1024., 768.));
+        .with_inner_size(glutin::dpi::LogicalSize::new(width, height));
     let window_context = glutin::ContextBuilder::new()
         .with_gl_profile(glutin::GlProfile::Core)
         .with_gl(glutin::GlRequest::Specific(glutin::Api::OpenGl, (4, 5)))
@@ -25,6 +31,8 @@ fn main() {
 
     ::gl::load_with(|s| context.get_proc_address(s) as *const std::ffi::c_void);
 
+    let game = Tetris::init();
+
     event_loop.run(move |event, _, control_flow| {
         *control_flow = event_loop::ControlFlow::Wait;
 
@@ -34,15 +42,16 @@ fn main() {
                 WindowEvent::CloseRequested => {
                     *control_flow = event_loop::ControlFlow::Exit;
                 }
-                WindowEvent::Resized(size) => {
-                    context.resize(*size);
+                WindowEvent::Resized(_) => {
+                    // context.resize(*size);
+                }
+                WindowEvent::KeyboardInput{input, ..} => {
+                    println!("{}", input.scancode);
                 }
                 _ => (),
             },
             Event::RedrawRequested(_) => {
-                // pipeline.clear(clear_color);
-                //                    pipeline.draw_arrays(3, Primitive::Triangle);
-                // pipeline.draw_elements(&index_buffer, 6, Primitive::Triangle);
+                game.draw_piece(5, 10);
                 context.swap_buffers().unwrap();
             }
             _ => (),
