@@ -5,6 +5,8 @@ extern crate image;
 mod gfx;
 mod tetris;
 
+use std::time::Instant;
+
 use glutin::{event::Event, event::WindowEvent, event_loop};
 use tetris::Tetris;
 
@@ -36,8 +38,10 @@ fn main() {
     let mut row: usize = 0;
     let mut column: usize = 0;
 
+    let mut instant = Instant::now();
+
     event_loop.run(move |event, _, control_flow| {
-        *control_flow = event_loop::ControlFlow::Wait;
+        *control_flow = event_loop::ControlFlow::Poll;
 
         match event {
             Event::LoopDestroyed => return,
@@ -80,16 +84,17 @@ fn main() {
                     //     }
                     //     _ => {}
                     // }
-                    game.draw_piece(row, column);
-                    context.swap_buffers().unwrap();
                 }
                 _ => (),
             },
-            Event::RedrawRequested(_) => {
-                game.draw_piece(row, column);
-                context.swap_buffers().unwrap();
-            }
+            Event::RedrawRequested(_) => {}
             _ => (),
         }
+        if instant.elapsed().as_millis() >= 1000 {
+            column = (column + 1).min(tetris::COLUMNS - 1);
+            instant = Instant::now();
+        }
+        game.draw_piece(row, column);
+        context.swap_buffers().unwrap();
     });
 }
