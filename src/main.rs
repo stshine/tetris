@@ -62,10 +62,10 @@ fn main() {
                                 row =  (row + 1).min(tetris::ROWS - 1);
                             }
                             glutin::event::VirtualKeyCode::Up => {
-                                column = (column + 1).min(tetris::COLUMNS - 1);
+                                column = column.checked_sub(1).unwrap_or(0);
                             }
                             glutin::event::VirtualKeyCode::Down => {
-                                column = column.checked_sub(1).unwrap_or(0);
+                                column = (column + 1).min(tetris::COLUMNS - 1);
                             }
                             _ => {}
                         }

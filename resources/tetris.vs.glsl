@@ -10,6 +10,6 @@ uniform int column;
 
 void main() {
     float x = (row + aPos.x) * ROW_UNIT - 1;
-    float y = (column + aPos.y) * COLUMN_UNIT - 1;
+    float y = -((column + aPos.y) * COLUMN_UNIT - 1);
     gl_Position = vec4(x, y, 0, 1.0);
 }
