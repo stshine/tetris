@@ -21,8 +21,8 @@ impl Tetris {
     pub fn init() -> Self {
         let program = create_program(
             "tetris", 
-            include_str!("../resources/tetris.vs.glsl"), 
-            include_str!("../resources/tetris.fs.glsl")
+            include_str!("../resources/tetris.vert.glsl"), 
+            include_str!("../resources/tetris.frag.glsl")
         );
 
         let mut piece_vao = 0;
