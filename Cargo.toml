@@ -2,10 +2,12 @@
 name = "tetris"
 version = "0.1.0"
 edition = "2021"
+resolver = "2"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-gl = "0.14"
-glutin = "0.27.0"
 image = { version = "0.23", default-features = false, features = ["png", "jpeg"] }
+pollster = "0.2.4"
+wgpu = "0.11"
+winit = "0.25"
