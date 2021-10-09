@@ -15,6 +15,9 @@ pub struct Tetris {
     piece_index: wgpu::Buffer,
     index_bind_group: wgpu::BindGroup,
     render_pipeline: wgpu::RenderPipeline,
+
+    row: usize,
+    column: usize,
 }
 
 impl Tetris {
@@ -39,7 +42,7 @@ impl Tetris {
                     limits: wgpu::Limits::default(),
                     label: None,
                 },
-                None
+                None,
             )
             .await
             .unwrap();
@@ -152,10 +155,50 @@ impl Tetris {
             piece_index,
             index_bind_group,
             render_pipeline,
+            row: 0,
+            column: 0,
         }
     }
 
-    pub fn draw_piece(&self, row: usize, column: usize) -> Result<(), wgpu::SurfaceError> {
+    pub fn advance(&mut self) {
+        self.column = (self.column + 1).min(COLUMNS - 1);
+    }
+
+    pub fn handle_key(&mut self, input: &winit::event::KeyboardInput) {
+        if let Some(key_code) = input.virtual_keycode {
+            match key_code {
+                winit::event::VirtualKeyCode::Left if self.row > 0 => {
+                    self.row = self.row - 1;
+                }
+                winit::event::VirtualKeyCode::Right if self.row < ROWS - 1 => {
+                    self.row = self.row + 1;
+                }
+                winit::event::VirtualKeyCode::Down if self.column < COLUMNS - 1 => {
+                    self.column = self.column + 1;
+                }
+                winit::event::VirtualKeyCode::Up => {
+                    // self.column = self.column - 1;
+                }
+                _ => {}
+            }
+        }
+        // match input.scancode {
+        //     0x4b => {
+        //     }
+        //     0x4d => {
+        //         row = row + 1;
+        //     }
+        //     0x50 => {
+        //         column = column - 1;
+        //     }
+        //     0x48 => {
+        //         column = column + 1;
+        //     }
+        //     _ => {}
+        // }
+    }
+
+    fn draw_piece(&self, row: usize, column: usize) -> Result<(), wgpu::SurfaceError> {
         let frame = self.surface.get_current_texture()?;
         let view = frame
             .texture
@@ -196,5 +239,9 @@ impl Tetris {
         self.queue.submit(Some(encoder.finish()));
         frame.present();
         Ok(())
+    }
+
+    pub fn render(&self) -> Result<(), wgpu::SurfaceError> {
+        return self.draw_piece(self.row, self.column);
     }
 }

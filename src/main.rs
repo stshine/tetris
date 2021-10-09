@@ -22,11 +22,7 @@ fn main() {
         .build(&event_loop)
         .unwrap();
 
-    let game = pollster::block_on(Tetris::init(&window));
-
-    let mut row: usize = 0;
-    let mut column: usize = 0;
-
+    let mut game = pollster::block_on(Tetris::init(&window));
     let mut instant = Instant::now();
 
     event_loop.run(move |event, _, control_flow| {
@@ -42,37 +38,7 @@ fn main() {
                     // context.resize(*size);
                 }
                 WindowEvent::KeyboardInput { input, .. } => {
-                    if let Some(key_code) = input.virtual_keycode {
-                        match key_code {
-                            winit::event::VirtualKeyCode::Left => {
-                                row = row.checked_sub(1).unwrap_or(0);
-                            }
-                            winit::event::VirtualKeyCode::Right => {
-                                row = (row + 1).min(tetris::ROWS - 1);
-                            }
-                            winit::event::VirtualKeyCode::Up => {
-                                column = column.checked_sub(1).unwrap_or(0);
-                            }
-                            winit::event::VirtualKeyCode::Down => {
-                                column = (column + 1).min(tetris::COLUMNS - 1);
-                            }
-                            _ => {}
-                        }
-                    }
-                    // match input.scancode {
-                    //     0x4b => {
-                    //     }
-                    //     0x4d => {
-                    //         row = row + 1;
-                    //     }
-                    //     0x50 => {
-                    //         column = column - 1;
-                    //     }
-                    //     0x48 => {
-                    //         column = column + 1;
-                    //     }
-                    //     _ => {}
-                    // }
+                    game.handle_key(input);
                 }
                 _ => (),
             },
@@ -80,12 +46,12 @@ fn main() {
                 window.request_redraw();
             }
             Event::RedrawRequested(_) => {
-                game.draw_piece(row, column).unwrap();
+                game.render().unwrap();
             }
             _ => (),
         }
         if instant.elapsed().as_millis() >= 1000 {
-            column = (column + 1).min(tetris::COLUMNS - 1);
+            game.advance();
             instant = Instant::now();
         }
     });
