@@ -1,8 +1,14 @@
-use wgpu::util::DeviceExt;
+use wgpu::{VertexBufferLayout, util::DeviceExt};
 
 pub const ROWS: usize = 10;
 pub const COLUMNS: usize = 20;
 const VERTICES: [[u32; 2]; 4] = [[0, 0], [0, 1], [1, 0], [1, 1]];
+
+pub fn cast_slice<T>(data: &[T]) -> &[u8] {
+    use std::{mem::size_of, slice::from_raw_parts};
+
+    unsafe { from_raw_parts(data.as_ptr() as *const u8, data.len() * size_of::<T>()) }
+}
 
 pub struct Tetris {
     surface: wgpu::Surface,
@@ -12,10 +18,12 @@ pub struct Tetris {
     config: wgpu::SurfaceConfiguration,
     // piece_shader: wgpu::ShaderModule,
     piece_vertices: wgpu::Buffer,
-    piece_index: wgpu::Buffer,
-    index_bind_group: wgpu::BindGroup,
+    matrix_buffer: wgpu::Buffer,
+    // piece_index: wgpu::Buffer,
+    // index_bind_group: wgpu::BindGroup,
     render_pipeline: wgpu::RenderPipeline,
 
+    matrix: [[u32; ROWS]; COLUMNS],
     row: usize,
     column: usize,
 }
@@ -60,39 +68,59 @@ impl Tetris {
             source: wgpu::ShaderSource::Wgsl(include_str!("../resources/tetris.wgsl").into()),
         });
 
-        let piece_index = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Index Buffer"),
-            contents: unsafe { &std::mem::transmute::<[u32; 2], [u8; 8]>([1, 1]) },
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        let matrix = <[[u32; ROWS]; COLUMNS]>::default();
+
+        let matrix_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Matrix buffer"),
+            contents: cast_slice(&matrix),
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
         });
 
-        let index_bind_group_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                entries: &[wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                }],
-                label: Some("index_binding_group_layout"),
-            });
+        let matrix_layout = VertexBufferLayout {
+            array_stride: std::mem::size_of::<u32>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Instance,
+            attributes: &[
+                wgpu::VertexAttribute {
+                    offset: 0,
+                    shader_location: 1,
+                    format: wgpu::VertexFormat::Uint32,
+                }
+            ]
+        };
 
-        let index_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &index_bind_group_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: piece_index.as_entire_binding(),
-            }],
-            label: Some("index_binding_group"),
-        });
+        // let piece_index = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        //     label: Some("Index Buffer"),
+        //     contents: unsafe { &std::mem::transmute::<[u32; 2], [u8; 8]>([1, 1]) },
+        //     usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        // });
+
+        // let index_bind_group_layout =
+        //     device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        //         entries: &[wgpu::BindGroupLayoutEntry {
+        //             binding: 0,
+        //             visibility: wgpu::ShaderStages::VERTEX,
+        //             ty: wgpu::BindingType::Buffer {
+        //                 ty: wgpu::BufferBindingType::Uniform,
+        //                 has_dynamic_offset: false,
+        //                 min_binding_size: None,
+        //             },
+        //             count: None,
+        //         }],
+        //         label: Some("index_binding_group_layout"),
+        //     });
+
+        // let index_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        //     layout: &index_bind_group_layout,
+        //     entries: &[wgpu::BindGroupEntry {
+        //         binding: 0,
+        //         resource: piece_index.as_entire_binding(),
+        //     }],
+        //     label: Some("index_binding_group"),
+        // });
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Piece pipeline"),
-            bind_group_layouts: &[&index_bind_group_layout],
+            bind_group_layouts: &[],
             push_constant_ranges: &[],
         });
 
@@ -118,7 +146,7 @@ impl Tetris {
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: "vs_main",
-                buffers: &[buffer_layout],
+                buffers: &[buffer_layout, matrix_layout],
             },
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
@@ -133,6 +161,7 @@ impl Tetris {
                 topology: wgpu::PrimitiveTopology::TriangleStrip,
                 strip_index_format: None,
                 front_face: wgpu::FrontFace::Ccw,
+                // Note: As a 2D application we should not set cull mode.
                 cull_mode: Some(wgpu::Face::Back),
                 polygon_mode: wgpu::PolygonMode::Fill,
                 clamp_depth: false,
@@ -152,9 +181,11 @@ impl Tetris {
             queue,
             config,
             piece_vertices,
-            piece_index,
-            index_bind_group,
+            matrix_buffer,
+            // piece_index,
+            // index_bind_group,
             render_pipeline,
+            matrix,
             row: 0,
             column: 0,
         }
@@ -162,6 +193,7 @@ impl Tetris {
 
     pub fn advance(&mut self) {
         self.column = (self.column + 1).min(COLUMNS - 1);
+        self.update();
     }
 
     pub fn handle_key(&mut self, input: &winit::event::KeyboardInput) {
@@ -182,6 +214,7 @@ impl Tetris {
                 _ => {}
             }
         }
+        self.update();
         // match input.scancode {
         //     0x4b => {
         //     }
@@ -198,11 +231,19 @@ impl Tetris {
         // }
     }
 
-    fn draw_piece(&self, row: usize, column: usize) -> Result<(), wgpu::SurfaceError> {
+    fn update(&self) {
+        // Instead of save the current tetromino in matrix directly, we use a copy.
+        let mut matrix = self.matrix.clone();
+        matrix[self.column][self.row] = 1;
+        self.queue.write_buffer(&self.matrix_buffer, 0, cast_slice(&matrix));
+    }
+
+    fn draw_matrix(&self) -> Result<(), wgpu::SurfaceError> {
         let frame = self.surface.get_current_texture()?;
         let view = frame
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
+
 
         let mut encoder = self
             .device
@@ -229,19 +270,17 @@ impl Tetris {
                 depth_stencil_attachment: None,
             });
             render_pass.set_pipeline(&self.render_pipeline);
-            render_pass.set_bind_group(0, &self.index_bind_group, &[]);
+            // render_pass.set_bind_group(0, &self.index_bind_group, &[]);
             render_pass.set_vertex_buffer(0, self.piece_vertices.slice(..));
-            render_pass.draw(0..4, 0..1);
+            render_pass.set_vertex_buffer(1, self.matrix_buffer.slice(..));
+            render_pass.draw(0..4, 0..(ROWS*COLUMNS) as u32);
         }
-        self.queue.write_buffer(&self.piece_index, 0, unsafe {
-            &std::mem::transmute::<[u32; 2], [u8; 8]>([row as u32, column as u32])
-        });
         self.queue.submit(Some(encoder.finish()));
         frame.present();
         Ok(())
     }
 
     pub fn render(&self) -> Result<(), wgpu::SurfaceError> {
-        return self.draw_piece(self.row, self.column);
+        return self.draw_matrix();
     }
 }
