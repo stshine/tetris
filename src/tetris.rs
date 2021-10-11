@@ -200,6 +200,16 @@ impl Tetris {
             self.column = self.column + 1;
         } else {
             self.matrix[self.column][self.row] = 1;
+            for column in 0..COLUMNS {
+                if self.matrix[column].iter().all(|x| *x != 0) {
+                    for col in (0..column).rev() {
+                        for row in 0..ROWS {
+                            self.matrix[col+1][row] = self.matrix[col][row];
+                            self.matrix[col][row] = 0; 
+                        }
+                    }
+                }
+            }
             self.row = 0;
             self.column = 0;
         }
