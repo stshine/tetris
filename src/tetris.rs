@@ -191,8 +191,18 @@ impl Tetris {
         }
     }
 
+    fn can_advance(&self) -> bool {
+        self.column < COLUMNS - 1 && self.matrix[self.column+1][self.row] == 0
+    }
+
     pub fn advance(&mut self) {
-        self.column = (self.column + 1).min(COLUMNS - 1);
+        if self.can_advance() {
+            self.column = self.column + 1;
+        } else {
+            self.matrix[self.column][self.row] = 1;
+            self.row = 0;
+            self.column = 0;
+        }
         self.update();
     }
 
@@ -206,7 +216,7 @@ impl Tetris {
                     self.row = self.row + 1;
                 }
                 winit::event::VirtualKeyCode::Down if self.column < COLUMNS - 1 => {
-                    self.column = self.column + 1;
+                    self.advance();
                 }
                 winit::event::VirtualKeyCode::Up => {
                     // self.column = self.column - 1;
