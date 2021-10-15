@@ -10,6 +10,77 @@ pub fn cast_slice<T>(data: &[T]) -> &[u8] {
     unsafe { from_raw_parts(data.as_ptr() as *const u8, data.len() * size_of::<T>()) }
 }
 
+enum Tetromino {
+    I,
+    O,
+    T,
+    J,
+    L,
+    S,
+    Z,
+}
+
+impl Tetromino {
+    pub fn color(&self) -> u32 {
+        match self {
+            Self::I => 0x2DD4BF,
+            Self::O => 0xFACC15,
+            Self::T => 0xC084FC,
+            Self::J => 0x60A5FA,
+            Self::L => 0xFB923C,
+            Self::S => 0x4ADE80,
+            Self::Z => 0xF87171,
+        }
+    }
+
+    pub fn blocks(&self) -> [Block; 4] {
+        match self {
+            Self::I => [
+                Block::new(-2, -1),
+                Block::new(-1, -1),
+                Block::new(0, -1),
+                Block::new(1, -1),
+            ],
+            Self::O => [
+                Block::new(0, 0),
+                Block::new(1, 0),
+                Block::new(0, 1),
+                Block::new(1, 1),
+            ],
+            Self::T => [
+                Block::new(0, 0),
+                Block::new(1, 0),
+                Block::new(0, 1),
+                Block::new(-1, 0),
+            ],
+            Self::J => [
+                Block::new(0, 0),
+                Block::new(1, 0),
+                Block::new(-1, 1),
+                Block::new(-1, 0),
+            ],
+            Self::L => [
+                Block::new(0, 0),
+                Block::new(1, 0),
+                Block::new(1, 1),
+                Block::new(-1, 0),
+            ],
+            Self::S => [
+                Block::new(0, 0),
+                Block::new(0, 1),
+                Block::new(1, 1),
+                Block::new(-1, 0),
+            ],
+            Self::Z => [
+                Block::new(0, 0),
+                Block::new(1, 0),
+                Block::new(0, 1),
+                Block::new(-1, 1),
+            ],
+        }
+    }
+}
+
 pub struct Tetris {
     surface: wgpu::Surface,
     // adapter: wgpu::Adapter,
