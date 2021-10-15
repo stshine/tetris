@@ -41,6 +41,12 @@ fn fs_main(input: VertexOutput) -> [[location(0)]] vec4<f32> {
     if (input.color == 0u) {
         return vec4<f32>(0.0, 0.0, 0.0, 1.0);
     } else {
-        return vec4<f32>(1.0, 1.0, 1.0, 1.0);
+        let ru = (input.color >> 16u)  % 256u;
+        let gu = (input.color >> 8u) % 256u;
+        let bu = input.color % 256u;
+        let r = f32(ru) / 256.0;
+        let g = f32(gu) / 256.0;
+        let b = f32(bu) / 256.0;
+        return vec4<f32>(r, g, b, 1.0);
     }
 }
