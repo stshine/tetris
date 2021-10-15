@@ -51,7 +51,7 @@ fn main() {
             _ => (),
         }
         if instant.elapsed().as_millis() >= 1000 {
-            game.advance();
+            game.advance(tetris::Action::Down);
             instant = Instant::now();
         }
     });

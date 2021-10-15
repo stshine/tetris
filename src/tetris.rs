@@ -1,4 +1,6 @@
-use wgpu::{VertexBufferLayout, util::DeviceExt};
+use wgpu::{util::DeviceExt, VertexBufferLayout};
+
+type Block = num_complex::Complex<i32>;
 
 pub const ROWS: usize = 10;
 pub const COLUMNS: usize = 20;
@@ -81,6 +83,14 @@ impl Tetromino {
     }
 }
 
+#[derive(PartialEq, Eq, Clone, Copy)]
+pub enum Action {
+    Left,
+    Right,
+    Down,
+    Rotate,
+}
+
 pub struct Tetris {
     surface: wgpu::Surface,
     // adapter: wgpu::Adapter,
@@ -95,6 +105,8 @@ pub struct Tetris {
     render_pipeline: wgpu::RenderPipeline,
 
     matrix: [[u32; ROWS]; COLUMNS],
+    tetromino: Tetromino,
+    orient: u32,
     row: usize,
     column: usize,
 }
@@ -150,13 +162,11 @@ impl Tetris {
         let matrix_layout = VertexBufferLayout {
             array_stride: std::mem::size_of::<u32>() as wgpu::BufferAddress,
             step_mode: wgpu::VertexStepMode::Instance,
-            attributes: &[
-                wgpu::VertexAttribute {
-                    offset: 0,
-                    shader_location: 1,
-                    format: wgpu::VertexFormat::Uint32,
-                }
-            ]
+            attributes: &[wgpu::VertexAttribute {
+                offset: 0,
+                shader_location: 1,
+                format: wgpu::VertexFormat::Uint32,
+            }],
         };
 
         // let piece_index = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -257,32 +267,92 @@ impl Tetris {
             // index_bind_group,
             render_pipeline,
             matrix,
-            row: 0,
-            column: 0,
+            tetromino: Tetromino::J,
+            orient: 0,
+            row: 5,
+            column: 2,
         }
     }
 
-    fn can_advance(&self) -> bool {
-        self.column < COLUMNS - 1 && self.matrix[self.column+1][self.row] == 0
+    pub fn blocks(&self, row: usize, column: usize, orient: u32) -> [[i32; 2]; 4] {
+        let blocks = self.tetromino.blocks();
+        let imaginary = num_complex::Complex::<i32>::new(0, 1);
+        let rotation = match self.tetromino {
+            // The I tetromino only has two rotations.
+            Tetromino::I => imaginary.powu(orient % 2),
+            // The O tetromino does not rotate.
+            Tetromino::O => Block::new(1, 0),
+            _ => imaginary.powu(orient),
+        };
+
+        blocks.map(|block| {
+            let value = block * rotation;
+            [
+                value.re + row as i32,
+                value.im + column as i32,
+            ]
+        })
     }
 
-    pub fn advance(&mut self) {
-        if self.can_advance() {
-            self.column = self.column + 1;
-        } else {
-            self.matrix[self.column][self.row] = 1;
-            for column in 0..COLUMNS {
-                if self.matrix[column].iter().all(|x| *x != 0) {
-                    for col in (0..column).rev() {
-                        for row in 0..ROWS {
-                            self.matrix[col+1][row] = self.matrix[col][row];
-                            self.matrix[col][row] = 0; 
+    fn spawn(&mut self) {
+        self.row = 5;
+        self.column = 2;
+        self.orient = 0;
+        let gen = rand::random::<u8>() % 7;
+        let tetromino = match gen {
+            0 => Tetromino::I,
+            1 => Tetromino::J,
+            2 => Tetromino::L,
+            3 => Tetromino::O,
+            4 => Tetromino::S,
+            5 => Tetromino::T,
+            6 => Tetromino::Z,
+            _ => unreachable!(),
+        };
+        self.tetromino = tetromino;
+    }
+
+    fn try_advance(&mut self, action: Action) -> bool {
+        let mut row = self.row;
+        let mut column = self.column;
+        let mut orient = self.orient;
+        match action {
+            Action::Left => row = row - 1,
+            Action::Right => row = row + 1,
+            Action::Rotate => orient = (orient + 1) % 4,
+            Action::Down => column = column + 1,
+        }
+        let blocks = self.blocks(row, column, orient);
+        let can_advance = blocks.iter().all(|[row, column]| {
+            *row < ROWS as i32 && *row >= 0 && 
+            *column < COLUMNS as i32 && *column >= 0 &&
+            self.matrix[*column as usize][*row as usize] == 0
+        });
+        if can_advance {
+            self.row = row;
+            self.column = column;
+            self.orient = orient;
+        }
+        can_advance
+    }
+
+    pub fn advance(&mut self, action: Action) {
+        if !self.try_advance(action) && action == Action::Down {
+            let color = self.tetromino.color();
+            for [row, column] in self.blocks(self.row, self.column, self.orient) {
+                self.matrix[column as usize][row as usize] = color;
+                for column in 0..COLUMNS {
+                    if self.matrix[column].iter().all(|x| *x != 0) {
+                        for col in (0..column).rev() {
+                            for row in 0..ROWS {
+                                self.matrix[col + 1][row] = self.matrix[col][row];
+                                self.matrix[col][row] = 0;
+                            }
                         }
                     }
                 }
             }
-            self.row = 0;
-            self.column = 0;
+            self.spawn();
         }
         self.update();
     }
@@ -291,21 +361,20 @@ impl Tetris {
         if let Some(key_code) = input.virtual_keycode {
             match key_code {
                 winit::event::VirtualKeyCode::Left if self.row > 0 => {
-                    self.row = self.row - 1;
+                    self.advance(Action::Left);
                 }
                 winit::event::VirtualKeyCode::Right if self.row < ROWS - 1 => {
-                    self.row = self.row + 1;
+                    self.advance(Action::Right);
                 }
                 winit::event::VirtualKeyCode::Down if self.column < COLUMNS - 1 => {
-                    self.advance();
+                    self.advance(Action::Down);
                 }
                 winit::event::VirtualKeyCode::Up => {
-                    // self.column = self.column - 1;
+                    self.advance(Action::Rotate);
                 }
                 _ => {}
             }
         }
-        self.update();
         // match input.scancode {
         //     0x4b => {
         //     }
@@ -325,8 +394,12 @@ impl Tetris {
     fn update(&self) {
         // Instead of save the current tetromino in matrix directly, we use a copy.
         let mut matrix = self.matrix.clone();
-        matrix[self.column][self.row] = 1;
-        self.queue.write_buffer(&self.matrix_buffer, 0, cast_slice(&matrix));
+        let color = self.tetromino.color();
+        for [row, column] in self.blocks(self.row, self.column, self.orient) {
+            matrix[column as usize][row as usize] = color;
+        }
+        self.queue
+            .write_buffer(&self.matrix_buffer, 0, cast_slice(&matrix));
     }
 
     fn draw_matrix(&self) -> Result<(), wgpu::SurfaceError> {
@@ -334,7 +407,6 @@ impl Tetris {
         let view = frame
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
-
 
         let mut encoder = self
             .device
@@ -364,7 +436,7 @@ impl Tetris {
             // render_pass.set_bind_group(0, &self.index_bind_group, &[]);
             render_pass.set_vertex_buffer(0, self.piece_vertices.slice(..));
             render_pass.set_vertex_buffer(1, self.matrix_buffer.slice(..));
-            render_pass.draw(0..4, 0..(ROWS*COLUMNS) as u32);
+            render_pass.draw(0..4, 0..(ROWS * COLUMNS) as u32);
         }
         self.queue.submit(Some(encoder.finish()));
         frame.present();
