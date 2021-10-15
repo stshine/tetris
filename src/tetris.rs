@@ -358,6 +358,9 @@ impl Tetris {
     }
 
     pub fn handle_key(&mut self, input: &winit::event::KeyboardInput) {
+        if input.state != winit::event::ElementState::Pressed {
+            return;
+        }
         if let Some(key_code) = input.virtual_keycode {
             match key_code {
                 winit::event::VirtualKeyCode::Left if self.row > 0 => {
